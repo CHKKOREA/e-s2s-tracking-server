@@ -28,3 +28,4 @@ app.post('/order-s2s', express.urlencoded({ extended: true }), (req, res) => {
   res.send('OK');
 });
 
+app.get('/', (req, res) => res.send('✅ S2S 서버가 정상 작동 중입니다.'));
