@@ -10,8 +10,8 @@ async function appendToSheet(row) {
   const client = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: client });
 
-  const spreadsheetId = '1A5qUAjmDN7LVlJhSlnJoLgeWQlTjPfZWtJ-vKoueOaE';
-  const RANGE = 'AliExpress!A1:E';
+const spreadsheetId = '1MoAf3D0hGeGJYGyGQ3339AxlupLaf_pI1hDYWsBmwj8';
+const RANGE = 'AliExpress!A1:E';
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
