@@ -22,3 +22,9 @@ app.listen(PORT, () => {
   console.log(`✅ Server is running at http://localhost:${PORT}`);
 });
 app.get('/', (req, res) => res.send('✅ S2S 서버가 정상 작동 중입니다.')); 
+
+app.post('/order-s2s', express.urlencoded({ extended: true }), (req, res) => {
+  console.log('🧾 [ORDER S2S] 알림 수신:', req.body);
+  res.send('OK');
+});
+
