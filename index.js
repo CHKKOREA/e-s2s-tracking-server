@@ -1,3 +1,10 @@
+const fs = require('fs');
+if (!fs.existsSync('./extreme-hull-456718-i1-6bb8509e66fc.json')) {
+  fs.writeFileSync(
+    './extreme-hull-456718-i1-6bb8509e66fc.json',
+    process.env.GOOGLE_CREDENTIALS_JSON
+  );
+}
 const express = require('express');
 const app = express();
 const port = process.env.PORT || 10000;
