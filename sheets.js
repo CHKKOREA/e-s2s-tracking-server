@@ -7,7 +7,7 @@ const auth = new google.auth.GoogleAuth({
 });
 
 const SHEET_ID = '1pgta-Nk81qvSmz-H_qSFsL_oaWW_trCDnxJwl8A8J1o';
-const RANGE = `'알리익스프레스'!A1`;
+const RANGE = 'AliExpress!A1';
 
 async function appendToSheet(rowData) {
   const client = await auth.getClient();
