@@ -1,29 +1,56 @@
 const { Client } = require('@notionhq/client');
 
-// 환경변수에서 토큰과 DB ID 가져오기
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const databaseId = process.env.NOTION_DATABASE_ID;
+const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
 async function appendToNotion(row) {
-  const [order_id, commission_fee, currency, tracking_id, timestamp] = row;
-
   await notion.pages.create({
-    parent: { database_id: databaseId },
+    parent: { database_id: NOTION_DATABASE_ID },
     properties: {
       order_id: {
-        title: [{ text: { content: order_id } }],
+        title: [
+          {
+            text: {
+              content: row[0],
+            },
+          },
+        ],
       },
       commission_fee: {
-        number: parseFloat(commission_fee),
+        rich_text: [
+          {
+            text: {
+              content: row[1],
+            },
+          },
+        ],
       },
       currency: {
-        rich_text: [{ text: { content: currency } }],
+        rich_text: [
+          {
+            text: {
+              content: row[2],
+            },
+          },
+        ],
       },
       tracking_id: {
-        rich_text: [{ text: { content: tracking_id } }],
+        rich_text: [
+          {
+            text: {
+              content: row[3],
+            },
+          },
+        ],
       },
       timestamp: {
-        date: { start: timestamp },
+        rich_text: [
+          {
+            text: {
+              content: row[4],
+            },
+          },
+        ],
       },
     },
   });
