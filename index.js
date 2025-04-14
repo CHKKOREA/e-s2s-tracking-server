@@ -21,7 +21,8 @@ app.post('/order-s2s', async (req, res) => {
     console.error('❌ Notion 저장 실패:', err.message);
   }
 
-  res.send('OK');
+  // ✅ AliExpress가 응답을 확실히 인식할 수 있도록 명시적으로 지정!
+  res.status(200).set('Content-Type', 'text/plain').send('OK');
 });
 
 app.listen(port, () => {
