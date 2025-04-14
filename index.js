@@ -7,6 +7,11 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => res.send('✅ S2S 서버가 정상 작동 중입니다.'));
 
+// ✅ AliExpress 테스트용 GET 요청 대응 추가!
+app.get('/order-s2s', (req, res) => {
+  res.status(200).set('Content-Type', 'text/plain').send('GET OK');
+});
+
 app.post('/order-s2s', async (req, res) => {
   const { order_id, commission_fee, currency, tracking_id } = req.body;
   const row = [order_id, commission_fee, currency, tracking_id, new Date().toISOString()];
@@ -21,7 +26,6 @@ app.post('/order-s2s', async (req, res) => {
     console.error('❌ Notion 저장 실패:', err.message);
   }
 
-  // ✅ AliExpress가 응답을 확실히 인식할 수 있도록 명시적으로 지정!
   res.status(200).set('Content-Type', 'text/plain').send('OK');
 });
 
