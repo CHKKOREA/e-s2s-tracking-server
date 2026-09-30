@@ -28,6 +28,10 @@ The following property names and types are supported:
 
 `GET /healthz` returns 200 after checking Notion access and schema. A bare
 `GET /order-s2s` returns `GET OK` as a reachability probe and creates no order.
+The portal preview GET with exactly `currency=currency`, `order_id=order_id`,
+`commission_fee=commission_fee`, and `tracking_id=tracking_id` is also a
+reachability probe. It returns `GET OK`, logs `s2s_preview_probe`, and never saves
+the placeholders. Mixed or incomplete placeholder payloads remain invalid.
 That probe alone does not verify callbacks or Notion writes. Logs contain event
 names and safe error codes, not payloads or credentials.
 Select currencies must already exist in the database options; the receiver does

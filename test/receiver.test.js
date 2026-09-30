@@ -32,6 +32,26 @@ test('a reachability probe never creates an order', async t => {
   const response = await fetch(`${url}/order-s2s`);
   assert.equal(await response.text(), 'GET OK');
 });
+test('the exact AliExpress preview GET is a probe and never inserts placeholders', async t => {
+  const { url, logs } = await receiver(t, { save: () => assert.fail('preview reached persistence') });
+  const query = 'currency=currency&order_id=order_id&commission_fee=commission_fee&tracking_id=tracking_id';
+  const response = await fetch(`${url}/order-s2s?${query}`);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'GET OK');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(logs.map(value => JSON.parse(value)), [{ event: 's2s_preview_probe' }]);
+});
+test('mixed, incomplete, extra, repeated and POST preview values stay invalid', async t => {
+  const { url } = await receiver(t, { save: () => assert.fail('invalid preview reached persistence') });
+  const query = 'currency=currency&order_id=order_id&commission_fee=commission_fee&tracking_id=tracking_id';
+  for (const invalid of [query.replace('currency=currency', 'currency=USD'),
+    query.replace('&tracking_id=tracking_id', ''), `${query}&extra=value`, `${query}&order_id=order_id`]) {
+    assert.equal((await fetch(`${url}/order-s2s?${invalid}`)).status, 400);
+  }
+  const response = await fetch(`${url}/order-s2s`, { method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: query });
+  assert.equal(response.status, 400);
+});
 test('Notion failure is 503 and private payload/error messages stay out of logs', async t => {
   const { url, logs } = await receiver(t, { save: async () => { throw Object.assign(new Error('secret-token and private order'), { code: 'unauthorized' }); } });
   const response = await fetch(`${url}/order-s2s?${new URLSearchParams(order)}`);

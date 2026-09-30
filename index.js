@@ -45,6 +45,14 @@ function createApp({ store = createNotionStore(), logger = console } = {}) {
       log('s2s_probe');
       return res.type('text/plain').send('GET OK');
     }
+    // The portal preview echoes these field names, rather than real order data.
+    // Recognize only that exact GET probe; never insert its placeholders.
+    const previewFields = ['currency', 'order_id', 'commission_fee', 'tracking_id'];
+    if (req.method === 'GET' && Object.keys(input).length === previewFields.length &&
+        previewFields.every(name => input[name] === name)) {
+      log('s2s_preview_probe');
+      return res.type('text/plain').send('GET OK');
+    }
     let order;
     try { order = parseOrder(input || {}); }
     catch (error) {
