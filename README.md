@@ -1,1 +1,40 @@
-# e-s2s-tracking-server
+# AliExpress S2S receiver
+
+The existing Render callback remains `/order-s2s`. It accepts GET query parameters,
+POST URL-encoded forms, and POST JSON: `order_id`, `commission_fee`, `currency`,
+and optional `tracking_id`. Currency and commission stay in the units supplied
+by AliExpress; no Dollar/Cent conversion is inferred.
+
+Orders are saved to the existing Notion database before HTTP 200 `OK` is returned.
+Storage failures return 503. Repeated identical orders do not insert another page;
+conflicting values and ambiguous existing duplicates return 409 without changing
+existing orders. The public callback does not authenticate AliExpress, so it must
+not update existing orders. Successful/uncertain create receipts protect retries
+inside one instance even if Notion query indexing lags. A fresh process checks
+Notion for existing orders; this is not a durable exactly-once guarantee across
+crashes. Use a database unique constraint before scaling to multiple instances.
+
+Set `NOTION_TOKEN` and `NOTION_DATABASE_ID` in Render's environment, never in Git.
+The integration needs database access and read/insert content capabilities.
+The following property names and types are supported:
+
+| Property | Type |
+| --- | --- |
+| order_id | Title or rich text |
+| commission_fee | Rich text or number |
+| currency | Rich text or select |
+| tracking_id | Rich text |
+| timestamp | Rich text or date |
+
+`GET /healthz` returns 200 after checking Notion access and schema. A bare
+`GET /order-s2s` returns `GET OK` as a reachability probe and creates no order.
+That probe alone does not verify callbacks or Notion writes. Logs contain event
+names and safe error codes, not payloads or credentials.
+Select currencies must already exist in the database options; the receiver does
+not create options or alter the schema. Uncertain writes return 503 until the
+existing page becomes visible; inspect Notion before attempting manual recovery.
+
+Run `npm ci` and `npm test` with Node.js 18 or newer. Local tests use isolated
+test doubles; deployment acceptance additionally requires a clearly labeled real
+test order saved to Notion, retransmission without duplication, and an AliExpress
+portal test. Render Free can sleep when idle.
