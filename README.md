@@ -1,7 +1,7 @@
 # AliExpress S2S receiver
 
-The existing Render callback remains `/order-s2s`. It accepts GET query parameters,
-POST URL-encoded forms, and POST JSON: `order_id`, `commission_fee`, `currency`,
+Both `/` and `/order-s2s` accept GET query parameters, POST URL-encoded forms,
+and POST JSON: `order_id`, `commission_fee`, `currency`,
 and optional `tracking_id`. Currency and commission stay in the units supplied
 by AliExpress; no Dollar/Cent conversion is inferred.
 
@@ -28,7 +28,9 @@ The following property names and types are supported:
 
 `GET /healthz` returns 200 after checking Notion access and schema. A bare
 `GET /order-s2s` returns `GET OK` as a reachability probe and creates no order.
-The portal preview GET with exactly `currency=currency`, `order_id=order_id`,
+A bare `GET /` keeps the server-status response used by Render health checks;
+root GET requests with query parameters enter the same order receiver as `/order-s2s`.
+The portal preview GET on either path with exactly `currency=currency`, `order_id=order_id`,
 `commission_fee=commission_fee`, and `tracking_id=tracking_id` is also a
 reachability probe. It returns `GET OK`, logs `s2s_preview_probe`, and never saves
 the placeholders. Mixed or incomplete placeholder payloads remain invalid.

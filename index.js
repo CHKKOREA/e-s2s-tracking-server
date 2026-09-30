@@ -27,7 +27,9 @@ function createApp({ store = createNotionStore(), logger = console } = {}) {
   const log = (event, metadata = {}) => logger.log(JSON.stringify({ event, ...metadata }));
   app.use((req, res, next) => {
     const started = Date.now();
-    const route = req.path === '/order-s2s' ? 'callback'
+    const rootCallback = req.path === '/' &&
+      (req.method === 'POST' || Object.keys(req.query).length > 0);
+    const route = req.path === '/order-s2s' || rootCallback ? 'callback'
       : req.path === '/healthz' ? 'readiness' : req.path === '/' ? 'root' : 'other';
     const metadata = { method: req.method, route };
     // Include unsupported methods and paths, without logging URLs or payloads.
@@ -39,7 +41,6 @@ function createApp({ store = createNotionStore(), logger = console } = {}) {
   });
   app.use(express.json({ limit: '8kb' }));
   app.use(express.urlencoded({ extended: false, limit: '8kb', parameterLimit: 20 }));
-  app.get('/', (req, res) => res.type('text/plain').send('S2S receiver is running. Check /healthz for Notion readiness.'));
   app.get('/healthz', async (req, res) => {
     try {
       await store.checkReady();
@@ -83,6 +84,12 @@ function createApp({ store = createNotionStore(), logger = console } = {}) {
         .send(conflict ? 'Existing order conflict' : 'Order storage unavailable');
     }
   };
+  app.get('/', (req, res) => {
+    if (Object.keys(req.query).length > 0) return receive(req, res);
+    // Render's bare root health checks must not depend on Notion or create orders.
+    return res.type('text/plain').send('S2S receiver is running. Check /healthz for Notion readiness.');
+  });
+  app.post('/', receive);
   app.get('/order-s2s', receive);
   app.post('/order-s2s', receive);
   app.use((error, req, res, next) => {

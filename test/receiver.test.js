@@ -108,6 +108,65 @@ test('readiness cannot report success when Notion is unavailable', async t => {
   assert.equal((await response.json()).status, 'not_ready');
 });
 
+for (const format of ['GET', 'form', 'json']) {
+  test(`root ${format} callback persists parameters before returning OK`, async t => {
+    const saved = [];
+    const { url } = await receiver(t, { save: async value => { saved.push(value); return 'created'; } });
+    const query = new URLSearchParams(order).toString();
+    const response = format === 'GET' ? await fetch(`${url}/?${query}`)
+      : await fetch(`${url}/`, { method: 'POST',
+        headers: { 'content-type': format === 'form' ? 'application/x-www-form-urlencoded' : 'application/json' },
+        body: format === 'form' ? query : JSON.stringify(order) });
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), 'OK');
+    assert.deepEqual(saved, [order]);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+  });
+}
+test('bare root health checks do not access Notion or create an order', async t => {
+  const { url, logs } = await receiver(t, {
+    save: () => assert.fail('root health check reached persistence'),
+    checkReady: () => assert.fail('root health check accessed Notion'),
+  });
+  const response = await fetch(`${url}/`);
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /S2S receiver is running/);
+  assert.deepEqual(JSON.parse(logs[0]), { event: 'http_request', method: 'GET', route: 'root' });
+});
+test('root preview GET is accepted without writes and invalid query data is rejected', async t => {
+  const { url, logs } = await receiver(t, { save: () => assert.fail('invalid or preview data was persisted') });
+  const query = 'currency=currency&order_id=order_id&commission_fee=commission_fee&tracking_id=tracking_id';
+  const response = await fetch(`${url}/?${query}`);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'GET OK');
+  assert.deepEqual(JSON.parse(logs[0]), { event: 'http_request', method: 'GET', route: 'callback' });
+  assert.ok(logs.some(value => JSON.parse(value).event === 's2s_preview_probe'));
+  for (const invalid of [query.replace('currency=currency', 'currency=USD'),
+    query.replace('&tracking_id=tracking_id', ''), `${query}&extra=value`,
+    `${query}&order_id=order_id`, 'commission_fee=1&currency=USD']) {
+    assert.equal((await fetch(`${url}/?${invalid}`)).status, 400);
+  }
+});
+test('root callbacks report persistence failure instead of a false success', async t => {
+  const { url } = await receiver(t, { save: async () => { throw new Error('storage unavailable'); } });
+  const response = await fetch(`${url}/?${new URLSearchParams(order)}`);
+  assert.equal(response.status, 503);
+  assert.equal(await response.text(), 'Order storage unavailable');
+});
+test('root and existing callbacks share duplicate and conflict protection', async t => {
+  const { client, pages, calls } = notionDouble();
+  const { url } = await receiver(t, createNotionStore({ client, databaseId: 'test-db' }));
+  const query = new URLSearchParams(order).toString();
+  assert.equal((await fetch(`${url}/?${query}`)).status, 200);
+  assert.equal((await fetch(`${url}/order-s2s?${query}`)).status, 200);
+  assert.equal((await fetch(`${url}/?${query}`)).status, 200);
+  const conflicting = new URLSearchParams({ ...order, commission_fee: '0.50' });
+  assert.equal((await fetch(`${url}/order-s2s?${conflicting}`)).status, 409);
+  assert.equal(calls.created, 1);
+  assert.equal(calls.updated, 0);
+  assert.equal(pages[0].properties.commission_fee.rich_text[0].text.content, order.commission_fee);
+});
+
 function notionDouble(types = {}) {
   const properties = Object.fromEntries(Object.entries({ order_id: 'title', commission_fee: 'rich_text',
     currency: 'rich_text', tracking_id: 'rich_text', timestamp: 'rich_text', ...types })
