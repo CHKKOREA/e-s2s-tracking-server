@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+node_modules/
+*.log
+.DS_Store
+*service-account*.json
+extreme-hull-456718-i1-6bb8509e66fc.json
