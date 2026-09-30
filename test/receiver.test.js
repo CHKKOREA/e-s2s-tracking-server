@@ -39,7 +39,32 @@ test('the exact AliExpress preview GET is a probe and never inserts placeholders
   assert.equal(response.status, 200);
   assert.equal(await response.text(), 'GET OK');
   assert.equal(response.headers.get('cache-control'), 'no-store');
-  assert.deepEqual(logs.map(value => JSON.parse(value)), [{ event: 's2s_preview_probe' }]);
+  const events = logs.map(value => JSON.parse(value));
+  assert.deepEqual(events.filter(value => value.event === 's2s_preview_probe'), [{ event: 's2s_preview_probe' }]);
+  assert.ok(events.some(value => value.event === 'http_response' && value.route === 'callback' && value.status === 200));
+});
+test('HTTP diagnostics include unsupported paths without leaking paths, query values or headers', async t => {
+  const { url, logs } = await receiver(t, { save: () => assert.fail('unknown path reached persistence') });
+  const response = await fetch(`${url}/private-order-path?token=private-query-value`, {
+    headers: { authorization: 'Bearer private-header-value' },
+  });
+  assert.equal(response.status, 404);
+  const events = logs.map(value => JSON.parse(value));
+  assert.deepEqual(events[0], { event: 'http_request', method: 'GET', route: 'other' });
+  assert.equal(events[1].event, 'http_response');
+  assert.equal(events[1].status, 404);
+  assert.ok(Number.isFinite(events[1].duration_ms));
+  assert.doesNotMatch(logs.join(''), /private-order-path|private-query-value|private-header-value/);
+});
+test('HTTP diagnostics expose HEAD and OPTIONS responses on the callback path', async t => {
+  const { url, logs } = await receiver(t, { save: () => assert.fail('method probe reached persistence') });
+  for (const [method, status] of [['HEAD', 400], ['OPTIONS', 200]]) {
+    const response = await fetch(`${url}/order-s2s`, { method });
+    assert.equal(response.status, status);
+    const events = logs.map(value => JSON.parse(value));
+    assert.ok(events.some(value => value.event === 'http_request' && value.method === method && value.route === 'callback'));
+    assert.ok(events.some(value => value.event === 'http_response' && value.method === method && value.status === status));
+  }
 });
 test('mixed, incomplete, extra, repeated and POST preview values stay invalid', async t => {
   const { url } = await receiver(t, { save: () => assert.fail('invalid preview reached persistence') });

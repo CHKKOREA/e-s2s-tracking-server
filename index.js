@@ -24,9 +24,21 @@ function createApp({ store = createNotionStore(), logger = console } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.set('query parser', 'simple');
+  const log = (event, metadata = {}) => logger.log(JSON.stringify({ event, ...metadata }));
+  app.use((req, res, next) => {
+    const started = Date.now();
+    const route = req.path === '/order-s2s' ? 'callback'
+      : req.path === '/healthz' ? 'readiness' : req.path === '/' ? 'root' : 'other';
+    const metadata = { method: req.method, route };
+    // Include unsupported methods and paths, without logging URLs or payloads.
+    log('http_request', metadata);
+    res.once('finish', () => log('http_response', {
+      ...metadata, status: res.statusCode, duration_ms: Date.now() - started,
+    }));
+    next();
+  });
   app.use(express.json({ limit: '8kb' }));
   app.use(express.urlencoded({ extended: false, limit: '8kb', parameterLimit: 20 }));
-  const log = (event, metadata = {}) => logger.log(JSON.stringify({ event, ...metadata }));
   app.get('/', (req, res) => res.type('text/plain').send('S2S receiver is running. Check /healthz for Notion readiness.'));
   app.get('/healthz', async (req, res) => {
     try {

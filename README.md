@@ -34,6 +34,9 @@ reachability probe. It returns `GET OK`, logs `s2s_preview_probe`, and never sav
 the placeholders. Mixed or incomplete placeholder payloads remain invalid.
 That probe alone does not verify callbacks or Notion writes. Logs contain event
 names and safe error codes, not payloads or credentials.
+HTTP diagnostics record arrival, method, a fixed route category, response status,
+and duration, including unsupported methods and paths. Raw paths, query strings,
+request bodies, headers, and credentials are excluded.
 Select currencies must already exist in the database options; the receiver does
 not create options or alter the schema. Uncertain writes return 503 until the
 existing page becomes visible; inspect Notion before attempting manual recovery.
